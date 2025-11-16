@@ -13,8 +13,8 @@ const MONGO_URI = "mongodb+srv://bloodServer:kJQIoEQB38a2951S@cluster0.xjpgufh.m
 connectDB(MONGO_URI);
 
 const allowedOrigins = [
-  "http://localhost:5173",             // লোকালি চলবে
-  "https://bloodnishiralo.netlify.app" // Netlify URL
+  // "http://localhost:5173",             // লোকালি চলবে
+  "https://helpful-rolypoly-c949ea.netlify.app" // Netlify URL
 ];
 
 app.use(
