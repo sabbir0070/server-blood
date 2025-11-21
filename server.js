@@ -13,16 +13,28 @@ const MONGO_URI = "mongodb+srv://bloodServer:kJQIoEQB38a2951S@cluster0.xjpgufh.m
 connectDB(MONGO_URI);
 
 const allowedOrigins = [
-  // "http://localhost:5173",             // লোকালি চলবে
-  "https://helpful-rolypoly-c949ea.netlify.app" // Netlify URL
+  "http://localhost:5173",             // Vite default port
+"http://localhost:1723",         // Alternative port
+  "http://localhost:3000",              // React default port
+  "https://bloodnishiralo.netlify.app"  // Netlify URL
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        // In development, allow localhost on any port
+        if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
+          return callback(null, true);
+        }
+        console.warn('CORS blocked origin:', origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -42,6 +54,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/donors', require('./routes/donors'));
 app.use('/api/success-stories', require('./routes/successStories'));
+app.use('/api/patients', require('./routes/patients'));
+app.use('/api/blood-requests', require('./routes/bloodRequests'));
+app.use('/api/alerts', require('./routes/alerts'));
 
 // health
 app.get('/api/health', (req, res) => res.json({ ok: true }));

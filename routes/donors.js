@@ -45,7 +45,7 @@ router.post('/', upload.single('avatar'), async (req, res) => {
       });
     }
 
-    const donor = new Donor({
+    const donorData = {
       name: name.trim(),
       bloodGroup,
       gender,
@@ -57,9 +57,15 @@ router.post('/', upload.single('avatar'), async (req, res) => {
       dob: dob ? new Date(dob) : null,
       lastDonation: lastDonation ? new Date(lastDonation) : null,
       donationsCount: donationsCount ? Number(donationsCount) : 0,
-      avatar: avatarPath || '',
       medicalConditions: medicalConditions || ''
-    });
+    };
+
+    // Only add avatar if file was uploaded
+    if (avatarPath) {
+      donorData.avatar = avatarPath;
+    }
+
+    const donor = new Donor(donorData);
 
     await donor.save();
     res.status(201).json({ success: true, donor });

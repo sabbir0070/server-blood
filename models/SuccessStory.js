@@ -1,12 +1,25 @@
 // backend/models/SuccessStory.js
 const mongoose = require('mongoose');
 
+const ReplySchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  userName: { type: String, required: true },
+  userEmail: { type: String },
+  userAvatar: { type: String },
+  reply: { type: String, required: true },
+  likes: [{ type: String }], // Array of user IDs who liked this reply
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 const CommentSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   userName: { type: String, required: true },
   userEmail: { type: String },
   userAvatar: { type: String },
   comment: { type: String, required: true },
+  likes: [{ type: String }], // Array of user IDs who liked this comment
+  replies: [ReplySchema],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -16,7 +29,6 @@ const SuccessStorySchema = new mongoose.Schema({
   location: { type: String, required: true },
   story: { type: String, required: true },
   bloodGroup: { type: String },
-  rating: { type: Number, default: 5, min: 1, max: 5 },
   userId: { type: String, required: true }, // user ID from User model
   userName: { type: String },
   userPhone: { type: String },
@@ -25,6 +37,8 @@ const SuccessStorySchema = new mongoose.Schema({
   reactions: {
     like: [{ type: String }], // Array of user IDs
     love: [{ type: String }],
+    care: [{ type: String }],
+    haha: [{ type: String }],
     wow: [{ type: String }],
     sad: [{ type: String }],
     angry: [{ type: String }]

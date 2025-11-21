@@ -31,6 +31,8 @@ router.post('/', optionalAuth, async (req, res) => {
     req.body.reactions = {
       like: [],
       love: [],
+      care: [],
+      haha: [],
       wow: [],
       sad: [],
       angry: []
@@ -65,7 +67,7 @@ router.put('/:id', optionalAuth, async (req, res) => {
     }
 
     // Update story fields (exclude reactions and comments)
-    const allowedFields = ['name', 'location', 'story', 'bloodGroup', 'rating'];
+    const allowedFields = ['name', 'location', 'story', 'bloodGroup'];
     allowedFields.forEach(key => {
       if (req.body[key] !== undefined) {
         story[key] = req.body[key];
@@ -121,16 +123,16 @@ router.post('/:id/react', optionalAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Story not found' });
     }
 
-    const { reactionType } = req.body; // like, love, wow, sad, angry
+    const { reactionType } = req.body; // like, love, care, haha, wow, sad, angry
     const userId = req.user._id.toString();
 
-    if (!['like', 'love', 'wow', 'sad', 'angry'].includes(reactionType)) {
+    if (!['like', 'love', 'care', 'haha', 'wow', 'sad', 'angry'].includes(reactionType)) {
       return res.status(400).json({ success: false, message: 'Invalid reaction type' });
     }
 
     // Initialize reactions if not exists
     if (!story.reactions) {
-      story.reactions = { like: [], love: [], wow: [], sad: [], angry: [] };
+      story.reactions = { like: [], love: [], care: [], haha: [], wow: [], sad: [], angry: [] };
     }
 
     // Remove user from all reactions first
@@ -258,6 +260,141 @@ router.delete('/:id/comments/:commentId', optionalAuth, async (req, res) => {
     res.json({ success: true, message: 'Comment deleted successfully' });
   } catch (error) {
     console.error('Error deleting comment:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/success-stories/:id/comments/:commentId/like - Like/Unlike comment
+router.post('/:id/comments/:commentId/like', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const story = await SuccessStory.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
+    }
+
+    const comment = story.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const userId = req.user._id.toString();
+    
+    // Initialize likes array if not exists
+    if (!comment.likes) {
+      comment.likes = [];
+    }
+
+    const hasLiked = comment.likes.includes(userId);
+    
+    if (hasLiked) {
+      // Unlike
+      comment.likes = comment.likes.filter(id => id !== userId);
+    } else {
+      // Like
+      comment.likes.push(userId);
+    }
+
+    await story.save();
+    res.json({ success: true, message: hasLiked ? 'Comment unliked' : 'Comment liked', comment });
+  } catch (error) {
+    console.error('Error liking comment:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/success-stories/:id/comments/:commentId/replies - Add reply to comment
+router.post('/:id/comments/:commentId/replies', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const story = await SuccessStory.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
+    }
+
+    const comment = story.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const { reply } = req.body;
+    if (!reply || !reply.trim()) {
+      return res.status(400).json({ success: false, message: 'Reply is required' });
+    }
+
+    // Initialize replies array if not exists
+    if (!comment.replies) {
+      comment.replies = [];
+    }
+
+    const newReply = {
+      userId: req.user._id.toString(),
+      userName: req.user.name,
+      userEmail: req.user.email,
+      userAvatar: req.user.avatar || '',
+      reply: reply.trim(),
+      likes: []
+    };
+
+    comment.replies.push(newReply);
+    await story.save();
+
+    res.json({ success: true, message: 'Reply added successfully', reply: comment.replies[comment.replies.length - 1] });
+  } catch (error) {
+    console.error('Error adding reply:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/success-stories/:id/comments/:commentId/replies/:replyId/like - Like/Unlike reply
+router.post('/:id/comments/:commentId/replies/:replyId/like', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const story = await SuccessStory.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
+    }
+
+    const comment = story.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    const userId = req.user._id.toString();
+    
+    // Initialize likes array if not exists
+    if (!reply.likes) {
+      reply.likes = [];
+    }
+
+    const hasLiked = reply.likes.includes(userId);
+    
+    if (hasLiked) {
+      // Unlike
+      reply.likes = reply.likes.filter(id => id !== userId);
+    } else {
+      // Like
+      reply.likes.push(userId);
+    }
+
+    await story.save();
+    res.json({ success: true, message: hasLiked ? 'Reply unliked' : 'Reply liked', reply });
+  } catch (error) {
+    console.error('Error liking reply:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

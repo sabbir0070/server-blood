@@ -14,7 +14,7 @@ const DonorSchema = new mongoose.Schema({
   dob: { type: Date, required: true },
   lastDonation: { type: Date, required: true },
   donationsCount: { type: Number, required: true, default: 0 },
-  avatar: { type: String, required: true }, // path to uploaded file (e.g. "/uploads/123.jpg")
+  avatar: { type: String, default: '', required: false }, // path to uploaded file (e.g. "/uploads/123.jpg")
   createdAt: { type: Date, default: Date.now }
 });
 
