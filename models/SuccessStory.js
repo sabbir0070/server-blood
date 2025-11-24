@@ -29,6 +29,7 @@ const SuccessStorySchema = new mongoose.Schema({
   location: { type: String, required: true },
   story: { type: String, required: true },
   bloodGroup: { type: String },
+  image: { type: String }, // Image path for the story
   userId: { type: String, required: true }, // user ID from User model
   userName: { type: String },
   userPhone: { type: String },
@@ -44,6 +45,7 @@ const SuccessStorySchema = new mongoose.Schema({
     angry: [{ type: String }]
   },
   comments: [CommentSchema],
+  shares: { type: Number, default: 0 }, // Share count
   date: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

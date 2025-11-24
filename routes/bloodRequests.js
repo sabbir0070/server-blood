@@ -34,11 +34,24 @@ router.get('/', async (req, res) => {
 // POST /api/blood-requests - Create new blood request
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { patientName, bloodGroup, neededDate, hospital, phone } = req.body;
+    const { 
+      patientName, 
+      age, 
+      bloodGroup, 
+      neededUnits,
+      hospitalName,
+      hospitalAddress,
+      wardBedNumber,
+      phone, 
+      emergencyLevel,
+      neededDate,
+      neededTime,
+      reasonNotes
+    } = req.body;
     const userId = req.user?._id?.toString() || req.user?.userId || null;
     
     // Validate required fields
-    if (!patientName || !bloodGroup || !neededDate || !hospital || !phone) {
+    if (!patientName || !age || !bloodGroup || !neededUnits || !hospitalName || !hospitalAddress || !phone || !neededDate) {
       return res.status(400).json({ 
         success: false, 
         error: 'Missing required fields' 
@@ -47,10 +60,17 @@ router.post('/', authenticate, async (req, res) => {
     
     const request = new BloodRequest({
       patientName: patientName.trim(),
+      age: parseInt(age) || 0,
       bloodGroup,
-      neededDate: new Date(neededDate),
-      hospital: hospital.trim(),
+      neededUnits: parseInt(neededUnits) || 1,
+      hospitalName: hospitalName.trim(),
+      hospitalAddress: hospitalAddress.trim(),
+      wardBedNumber: wardBedNumber?.trim() || null,
       phone: phone.trim(),
+      emergencyLevel: emergencyLevel || 'normal',
+      neededDate: new Date(neededDate),
+      neededTime: neededTime || '12:00',
+      reasonNotes: reasonNotes?.trim() || null,
       status: 'pending',
       createdBy: userId
     });
@@ -61,7 +81,7 @@ router.post('/', authenticate, async (req, res) => {
     const alert = new Alert({
       type: 'blood_request',
       title: 'New Blood Request',
-      message: `${patientName} needs ${bloodGroup} blood at ${hospital}`,
+      message: `${patientName} needs ${bloodGroup} blood at ${hospitalName}`,
       relatedId: request._id.toString(),
       isRead: false
     });
@@ -148,7 +168,20 @@ router.patch('/:id/accept', async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { patientName, bloodGroup, neededDate, hospital, phone } = req.body;
+    const { 
+      patientName, 
+      age, 
+      bloodGroup, 
+      neededUnits,
+      hospitalName,
+      hospitalAddress,
+      wardBedNumber,
+      phone, 
+      emergencyLevel,
+      neededDate,
+      neededTime,
+      reasonNotes
+    } = req.body;
     const userId = req.user?._id?.toString() || req.user?.userId || null;
     const isAdmin = req.user?.role === 'admin';
     
@@ -169,7 +202,7 @@ router.put('/:id', authenticate, async (req, res) => {
     }
     
     // Validate required fields
-    if (!patientName || !bloodGroup || !neededDate || !hospital || !phone) {
+    if (!patientName || !age || !bloodGroup || !neededUnits || !hospitalName || !hospitalAddress || !phone || !neededDate) {
       return res.status(400).json({ 
         success: false, 
         error: 'Missing required fields' 
@@ -177,10 +210,17 @@ router.put('/:id', authenticate, async (req, res) => {
     }
     
     request.patientName = patientName.trim();
+    request.age = parseInt(age) || 0;
     request.bloodGroup = bloodGroup;
-    request.neededDate = new Date(neededDate);
-    request.hospital = hospital.trim();
+    request.neededUnits = parseInt(neededUnits) || 1;
+    request.hospitalName = hospitalName.trim();
+    request.hospitalAddress = hospitalAddress.trim();
+    request.wardBedNumber = wardBedNumber?.trim() || null;
     request.phone = phone.trim();
+    request.emergencyLevel = emergencyLevel || 'normal';
+    request.neededDate = new Date(neededDate);
+    request.neededTime = neededTime || '12:00';
+    request.reasonNotes = reasonNotes?.trim() || null;
     
     await request.save();
     

@@ -6,24 +6,60 @@ const bloodRequestSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  age: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 150
+  },
   bloodGroup: {
     type: String,
     required: true,
     enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
   },
-  neededDate: {
-    type: Date,
-    required: true
+  neededUnits: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1
   },
-  hospital: {
+  hospitalName: {
     type: String,
     required: true,
     trim: true
+  },
+  hospitalAddress: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  wardBedNumber: {
+    type: String,
+    trim: true,
+    default: null
   },
   phone: {
     type: String,
     required: true,
     trim: true
+  },
+  emergencyLevel: {
+    type: String,
+    enum: ['normal', 'urgent', 'critical'],
+    default: 'normal'
+  },
+  neededDate: {
+    type: Date,
+    required: true
+  },
+  neededTime: {
+    type: String,
+    default: '12:00'
+  },
+  reasonNotes: {
+    type: String,
+    trim: true,
+    default: null
   },
   status: {
     type: String,

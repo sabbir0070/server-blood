@@ -1,8 +1,32 @@
 // backend/routes/successStories.js
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const SuccessStory = require('../models/SuccessStory');
 const { authenticate, optionalAuth } = require('../middleware/auth');
+
+// multer storage for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + ext);
+  }
+});
+const upload = multer({ storage });
+
+// Middleware to conditionally use multer only for multipart requests
+const handleMultipartOrJson = (req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return upload.single('image')(req, res, next);
+  }
+  // For JSON requests, just pass through - express.json() will handle it
+  next();
+};
 
 // GET /api/success-stories - Get all stories
 router.get('/', async (req, res) => {
@@ -16,8 +40,13 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/success-stories - Create new story
-router.post('/', optionalAuth, async (req, res) => {
+router.post('/', handleMultipartOrJson, optionalAuth, async (req, res) => {
   try {
+    // Initialize req.body if it's undefined (for multipart requests)
+    if (!req.body) {
+      req.body = {};
+    }
+    
     // If user is authenticated, use their info from DB
     if (req.user) {
       req.body.userId = req.user._id.toString();
@@ -25,6 +54,11 @@ router.post('/', optionalAuth, async (req, res) => {
       req.body.userEmail = req.user.email;
       req.body.userPhone = req.user.phone || '';
       req.body.userAvatar = req.user.avatar || '';
+    }
+    
+    // Handle image file if uploaded
+    if (req.file) {
+      req.body.image = `/uploads/${req.file.filename}`;
     }
     
     // Initialize reactions
@@ -48,8 +82,13 @@ router.post('/', optionalAuth, async (req, res) => {
 });
 
 // PUT /api/success-stories/:id - Update story
-router.put('/:id', optionalAuth, async (req, res) => {
+router.put('/:id', handleMultipartOrJson, optionalAuth, async (req, res) => {
   try {
+    // Initialize req.body if it's undefined (for multipart requests)
+    if (!req.body) {
+      req.body = {};
+    }
+    
     const story = await SuccessStory.findById(req.params.id);
     if (!story) {
       return res.status(404).json({ success: false, message: 'Story not found' });
@@ -73,6 +112,12 @@ router.put('/:id', optionalAuth, async (req, res) => {
         story[key] = req.body[key];
       }
     });
+    
+    // Handle image file if uploaded
+    if (req.file) {
+      story.image = `/uploads/${req.file.filename}`;
+    }
+    
     story.updatedAt = Date.now();
 
     await story.save();
@@ -395,6 +440,89 @@ router.post('/:id/comments/:commentId/replies/:replyId/like', optionalAuth, asyn
     res.json({ success: true, message: hasLiked ? 'Reply unliked' : 'Reply liked', reply });
   } catch (error) {
     console.error('Error liking reply:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/success-stories/:id/comments/:commentId/replies/:replyId - Update reply
+router.put('/:id/comments/:commentId/replies/:replyId', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const story = await SuccessStory.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
+    }
+
+    const comment = story.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    // Only reply owner can update
+    if (reply.userId !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'You can only edit your own replies' });
+    }
+
+    const { reply: replyText } = req.body;
+    if (!replyText || !replyText.trim()) {
+      return res.status(400).json({ success: false, message: 'Reply is required' });
+    }
+
+    reply.reply = replyText.trim();
+    reply.updatedAt = Date.now();
+    await story.save();
+
+    res.json({ success: true, message: 'Reply updated successfully', reply });
+  } catch (error) {
+    console.error('Error updating reply:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/success-stories/:id/comments/:commentId/replies/:replyId - Delete reply
+router.delete('/:id/comments/:commentId/replies/:replyId', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const story = await SuccessStory.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
+    }
+
+    const comment = story.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    // Reply owner or admin can delete
+    const isAdmin = req.user.role === 'admin';
+    const isOwner = reply.userId === req.user._id.toString();
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own replies' });
+    }
+
+    comment.replies.pull(req.params.replyId);
+    await story.save();
+
+    res.json({ success: true, message: 'Reply deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting reply:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

@@ -14,9 +14,12 @@ connectDB(MONGO_URI);
 
 const allowedOrigins = [
   "http://localhost:5173",             // Vite default port
-"http://localhost:1723",         // Alternative port
-  "http://localhost:3000",              // React default port
-  "https://bloodnishiralo.netlify.app"  // Netlify URL
+  "http://localhost:1723",             // Alternative port
+  "http://localhost:3000",             // React default port
+  "http://localhost:10499",           // Vite alternative port
+  "http://localhost:13453",           // Vite alternative port
+  "https://bloodnishiralo.netlify.app", // Netlify URL
+  "https://server-blood.vercel.app"    // Vercel server (for production)
 ];
 
 app.use(
@@ -31,14 +34,20 @@ app.use(
         callback(null, true);
       } else {
         // In development, allow localhost on any port
-        if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
+        if (origin.startsWith('http://localhost:')) {
+          return callback(null, true);
+        }
+        // Also allow localhost in production for testing
+        if (origin.startsWith('http://localhost:')) {
           return callback(null, true);
         }
         console.warn('CORS blocked origin:', origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   })
 );
 
