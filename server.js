@@ -29,7 +29,7 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -71,5 +71,40 @@ app.use('/api/alerts', require('./routes/alerts'));
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 app.get('/', (req, res) => res.json({ message: "API is running" }));
+
+// 404 Handler
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Not Found - ${req.originalUrl}`
+  });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('🔥 Global Error:', err);
+
+  // Handle Multer errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'File too large. Maximum size is 5MB.'
+    });
+  }
+
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Unexpected file upload.'
+    });
+  }
+
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+  });
+});
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

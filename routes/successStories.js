@@ -46,7 +46,7 @@ router.post('/', handleMultipartOrJson, optionalAuth, async (req, res) => {
     if (!req.body) {
       req.body = {};
     }
-    
+
     // If user is authenticated, use their info from DB
     if (req.user) {
       req.body.userId = req.user._id.toString();
@@ -55,12 +55,12 @@ router.post('/', handleMultipartOrJson, optionalAuth, async (req, res) => {
       req.body.userPhone = req.user.phone || '';
       req.body.userAvatar = req.user.avatar || '';
     }
-    
+
     // Handle image file if uploaded
     if (req.file) {
       req.body.image = `/uploads/${req.file.filename}`;
     }
-    
+
     // Initialize reactions
     req.body.reactions = {
       like: [],
@@ -71,7 +71,7 @@ router.post('/', handleMultipartOrJson, optionalAuth, async (req, res) => {
       sad: [],
       angry: []
     };
-    
+
     const story = new SuccessStory(req.body);
     await story.save();
     res.json({ success: true, message: 'Story created successfully', story });
@@ -88,7 +88,7 @@ router.put('/:id', handleMultipartOrJson, optionalAuth, async (req, res) => {
     if (!req.body) {
       req.body = {};
     }
-    
+
     const story = await SuccessStory.findById(req.params.id);
     if (!story) {
       return res.status(404).json({ success: false, message: 'Story not found' });
@@ -100,7 +100,7 @@ router.put('/:id', handleMultipartOrJson, optionalAuth, async (req, res) => {
     }
 
     const isOwner = story.userId === req.user._id.toString();
-    
+
     if (!isOwner) {
       return res.status(403).json({ success: false, message: 'You can only edit your own stories' });
     }
@@ -112,12 +112,12 @@ router.put('/:id', handleMultipartOrJson, optionalAuth, async (req, res) => {
         story[key] = req.body[key];
       }
     });
-    
+
     // Handle image file if uploaded
     if (req.file) {
       story.image = `/uploads/${req.file.filename}`;
     }
-    
+
     story.updatedAt = Date.now();
 
     await story.save();
@@ -143,7 +143,7 @@ router.delete('/:id', optionalAuth, async (req, res) => {
 
     const isAdmin = req.user.role === 'admin';
     const isOwner = story.userId === req.user._id.toString();
-    
+
     if (!isAdmin && !isOwner) {
       return res.status(403).json({ success: false, message: 'Unauthorized. You can only delete your own stories.' });
     }
@@ -180,18 +180,19 @@ router.post('/:id/react', optionalAuth, async (req, res) => {
       story.reactions = { like: [], love: [], care: [], haha: [], wow: [], sad: [], angry: [] };
     }
 
+    // Check if user already reacted with this type BEFORE removing
+    const hasReacted = story.reactions[reactionType].includes(userId);
+
     // Remove user from all reactions first
     Object.keys(story.reactions).forEach(key => {
       story.reactions[key] = story.reactions[key].filter(id => id !== userId);
     });
 
-    // Check if user already reacted with this type
-    const hasReacted = story.reactions[reactionType].includes(userId);
-    
     if (!hasReacted) {
-      // Add reaction
+      // Add reaction (toggle on)
       story.reactions[reactionType].push(userId);
     }
+    // If hasReacted was true, we just removed them above (toggle off)
 
     await story.save();
     res.json({ success: true, message: hasReacted ? 'Reaction removed' : 'Reaction added', story });
@@ -327,14 +328,14 @@ router.post('/:id/comments/:commentId/like', optionalAuth, async (req, res) => {
     }
 
     const userId = req.user._id.toString();
-    
+
     // Initialize likes array if not exists
     if (!comment.likes) {
       comment.likes = [];
     }
 
     const hasLiked = comment.likes.includes(userId);
-    
+
     if (hasLiked) {
       // Unlike
       comment.likes = comment.likes.filter(id => id !== userId);
@@ -420,14 +421,14 @@ router.post('/:id/comments/:commentId/replies/:replyId/like', optionalAuth, asyn
     }
 
     const userId = req.user._id.toString();
-    
+
     // Initialize likes array if not exists
     if (!reply.likes) {
       reply.likes = [];
     }
 
     const hasLiked = reply.likes.includes(userId);
-    
+
     if (hasLiked) {
       // Unlike
       reply.likes = reply.likes.filter(id => id !== userId);
